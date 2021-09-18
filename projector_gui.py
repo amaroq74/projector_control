@@ -32,27 +32,42 @@ class ProjectorInterface(QThread):
 
     @pyqtSlot()
     def powerOn(self):
-        self.proj.set_power('on')
+        try:
+            self.proj.set_power('on')
+        except Exception as e:
+            print("Got power on error {e}")
 
     @pyqtSlot()
     def powerOff(self):
-        self.proj.set_power('off')
+        try:
+            self.proj.set_power('off')
+        except Exception as e:
+            print("Got power off error {e}")
 
     @pyqtSlot()
     def shutterOn(self):
-        self.proj.set_mute(MUTE_VIDEO,True)
+        try:
+            self.proj.set_mute(MUTE_VIDEO,True)
+        except Exception as e:
+            print("Got shutter on error {e}")
 
     @pyqtSlot()
     def shutterOff(self):
-        self.proj.set_mute(MUTE_VIDEO,False)
+        try:
+            self.proj.set_mute(MUTE_VIDEO,False)
+        except Exception as e:
+            print("Got shutter off error {e}")
 
     def run(self):
         last = time.time()
 
         while True:
-            self.powerUpdated.emit(self.proj.get_power())
-            #self.shutterUpdated.emit(str(self.proj.get_mute()))
-            self.timeUpdated.emit(str(datetime.datetime.now()))
+            try:
+                self.powerUpdated.emit(self.proj.get_power())
+                #self.shutterUpdated.emit(str(self.proj.get_mute()))
+                self.timeUpdated.emit(str(datetime.datetime.now()))
+            except Exception as e:
+                print("Got poll error {e}")
 
             dur = time.time() - last
 
