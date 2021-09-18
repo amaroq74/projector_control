@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install sip pyqt5 pyinstaller
+          pip install sip pyqt5 pyinstaller pypjlink
 
       - name: Get Image Information
         id: get_image_info

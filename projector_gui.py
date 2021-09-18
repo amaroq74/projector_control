@@ -8,26 +8,63 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore    import *
 from PyQt5.QtGui     import *
 
+import threading
+import datetime
+import time
+
 ProjAddrs = {'StageLeft' : 'ch-proj1.pius.org',
              'StageRight': 'ch-proj3.pius.org',
              'Center'    : 'ch-proj2.pius.org'}
 
+class ProjectorInterface(QThread):
+
+    powerUpdated = pyqtSignal(str)
+    shutterUpdated = pyqtSignal(str)
+    timeUpdated = pyqtSignal(str)
+
+    def __init__(self, name, addr, parent=None):
+        super(ProjectorInterface, self).__init__(parent)
+
+        self.name = name
+        self._addr = addr
+        self.proj = Projector.from_address(addr)
+        self.proj.authenticate('admin')
+
+    def powerOn(self):
+        self.proj.set_power('on')
+
+    def powerOff(self):
+        self.proj.set_power('off')
+
+    def shutterOn(self):
+        self.proj.set_mute(MUTE_VIDEO,True)
+
+    def shutterOff(self):
+        self.proj.set_mute(MUTE_VIDEO,False)
+
+    def run(self):
+        last = time.time()
+
+        while True:
+            self.powerUpdated.emit(self.proj.get_power())
+            self.shutterUpdated.emit(str(self.proj.get_mute()))
+            self.timeUpdated.emit(str(datetime.datetime.now()))
+
+            dur = time.time() - last
+
+            if dur < 1.0:
+                time.sleep(1.0-dur)
+
+            last = time.time()
+
 class ProjectorControl(QWidget):
 
-    # Field update signals
-    updatePowerStatus   = [pyqtSignal(str)] * len(ProjAddrs)
-    updateShutterStatus = [pyqtSignal(str)] * len(ProjAddrs)
+    updateTime = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super(ProjectorControl, self).__init__(parent)
 
-        self.thread = threading.Thread(target=self.pollStatus)
-        self.thread.start()
-
-        self.projs = [Projector.from_address(v) for k,v in ProjAddrs.items()]
-
-        for p in self.projs:
-            p.authenticate('admin')
+        self.projs = [None] * len(ProjAddrs)
 
         self.setWindowTitle("St. Pius Projector Control")
 
@@ -43,16 +80,22 @@ class ProjectorControl(QWidget):
         top.addLayout(fl)
 
         for i, (k,v) in enumerate(ProjAddrs.items()):
+            self.projs[i] = ProjectorInterface(k,v,self)
 
             power = QLineEdit()
             power.setReadOnly(True)
-            self.updatePowerStatus[i].connect(power.setText)
-            fl.addRow(v + ' Power:',power)
+            self.projs[i].powerUpdated.connect(power.setText)
+            fl.addRow(k + ' Power:',power)
 
             shutter = QLineEdit()
             shutter.setReadOnly(True)
-            self.updateShutterStatus[i].connect(shutter.setText)
-            fl.addRow(v + ' Shutter:',shutter)
+            self.projs[i].shutterUpdated.connect(shutter.setText)
+            fl.addRow(k + ' Shutter:',shutter)
+
+            dtime = QLineEdit()
+            dtime.setReadOnly(True)
+            self.projs[i].timeUpdated.connect(dtime.setText)
+            fl.addRow(k + ' Last:',dtime)
 
         powerOnBtn = QPushButton("Power All On")
         powerOnBtn.pressed.connect(self.powerOnPressed)
@@ -70,28 +113,34 @@ class ProjectorControl(QWidget):
         shutterOffBtn.pressed.connect(self.shutterOffPressed)
         fl.addRow("",shutterOffBtn)
 
+        for p in self.projs:
+            p.start()
+
         self.resize(500,600)
 
     @pyqtSlot()
     def powerOnPressed(self):
-        pass
+        for p in self.projs:
+            p.powerOn()
 
     @pyqtSlot()
     def powerOffPressed(self):
-        pass
+        for p in self.projs:
+            p.powerOff()
 
-    def pollStatus(self):
+    @pyqtSlot()
+    def shutterOnPressed(self):
+        for p in self.projs:
+            p.shutterOn()
 
-        while(True):
-
-            for p in self.projs:
-                self.updatePowerStatus.emit(p.get_power())
-                self.updateShutterStatus.emit(p.get_mute()[0])
-
+    @pyqtSlot()
+    def shutterOffPressed(self):
+        for p in self.projs:
+            p.shutterOff()
 
 appTop = QApplication(sys.argv)
 
-gui = gui.ProjectorControl()
+gui = ProjectorControl()
 gui.show()
 appTop.exec_()
 
