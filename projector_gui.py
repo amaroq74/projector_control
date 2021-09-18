@@ -30,15 +30,19 @@ class ProjectorInterface(QThread):
         self.proj = Projector.from_address(addr)
         self.proj.authenticate('admin')
 
+    @pyqtSlot()
     def powerOn(self):
         self.proj.set_power('on')
 
+    @pyqtSlot()
     def powerOff(self):
         self.proj.set_power('off')
 
+    @pyqtSlot()
     def shutterOn(self):
         self.proj.set_mute(MUTE_VIDEO,True)
 
+    @pyqtSlot()
     def shutterOff(self):
         self.proj.set_mute(MUTE_VIDEO,False)
 
@@ -47,7 +51,7 @@ class ProjectorInterface(QThread):
 
         while True:
             self.powerUpdated.emit(self.proj.get_power())
-            self.shutterUpdated.emit(str(self.proj.get_mute()))
+            #self.shutterUpdated.emit(str(self.proj.get_mute()))
             self.timeUpdated.emit(str(datetime.datetime.now()))
 
             dur = time.time() - last
@@ -87,10 +91,10 @@ class ProjectorControl(QWidget):
             self.projs[i].powerUpdated.connect(power.setText)
             fl.addRow(k + ' Power:',power)
 
-            shutter = QLineEdit()
-            shutter.setReadOnly(True)
-            self.projs[i].shutterUpdated.connect(shutter.setText)
-            fl.addRow(k + ' Shutter:',shutter)
+            #shutter = QLineEdit()
+            #shutter.setReadOnly(True)
+            #self.projs[i].shutterUpdated.connect(shutter.setText)
+            #fl.addRow(k + ' Shutter:',shutter)
 
             dtime = QLineEdit()
             dtime.setReadOnly(True)
@@ -98,45 +102,34 @@ class ProjectorControl(QWidget):
             fl.addRow(k + ' Last:',dtime)
 
         powerOnBtn = QPushButton("Power All On")
-        powerOnBtn.pressed.connect(self.powerOnPressed)
+        powerOnBtn.pressed.connect(self.projs[0].powerOn)
+        powerOnBtn.pressed.connect(self.projs[1].powerOn)
+        powerOnBtn.pressed.connect(self.projs[2].powerOn)
         fl.addRow("",powerOnBtn)
 
         powerOffBtn = QPushButton("Power All Off")
-        powerOffBtn.pressed.connect(self.powerOffPressed)
+        powerOffBtn.pressed.connect(self.projs[0].powerOff)
+        powerOffBtn.pressed.connect(self.projs[1].powerOff)
+        powerOffBtn.pressed.connect(self.projs[2].powerOff)
         fl.addRow("",powerOffBtn)
 
-        shutterOnBtn = QPushButton("Shutter All On")
-        shutterOnBtn.pressed.connect(self.shutterOnPressed)
-        fl.addRow("",shutterOnBtn)
+        #shutterOnBtn = QPushButton("Shutter All On")
+        #shutterOnBtn.pressed.connect(self.projs[0].shutterOn)
+        #shutterOnBtn.pressed.connect(self.projs[1].shutterOn)
+        #shutterOnBtn.pressed.connect(self.projs[2].shutterOn)
+        #fl.addRow("",shutterOnBtn)
 
-        shutterOffBtn = QPushButton("Shutter All Off")
-        shutterOffBtn.pressed.connect(self.shutterOffPressed)
-        fl.addRow("",shutterOffBtn)
+        #shutterOffBtn = QPushButton("Shutter All Off")
+        #shutterOffBtn.pressed.connect(self.projs[0].shutterOff)
+        #shutterOffBtn.pressed.connect(self.projs[1].shutterOff)
+        #shutterOffBtn.pressed.connect(self.projs[2].shutterOff)
+        #fl.addRow("",shutterOffBtn)
 
         for p in self.projs:
             p.start()
 
-        self.resize(500,600)
+        self.resize(400,300)
 
-    @pyqtSlot()
-    def powerOnPressed(self):
-        for p in self.projs:
-            p.powerOn()
-
-    @pyqtSlot()
-    def powerOffPressed(self):
-        for p in self.projs:
-            p.powerOff()
-
-    @pyqtSlot()
-    def shutterOnPressed(self):
-        for p in self.projs:
-            p.shutterOn()
-
-    @pyqtSlot()
-    def shutterOffPressed(self):
-        for p in self.projs:
-            p.shutterOff()
 
 appTop = QApplication(sys.argv)
 
