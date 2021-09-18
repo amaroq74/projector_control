@@ -1,0 +1,49 @@
+name: Deployment
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+
+  win_packager:
+    name: Package Windows Binary
+    runs-on: windows-latest
+    steps:
+
+      # This step checks out a copy of your repository.
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          pip install sip pyqt5 pyinstaller
+
+      - name: Get Image Information
+        id: get_image_info
+        run: |
+          echo ::set-output name=tag::`git describe --tags`
+
+      - name: Build
+        env:
+          IMAGE_VER: ${{ steps.get_image_info.outputs.tag }}
+          GH_REPO_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          pyinstaller --onefile projector_gui.py
+
+      - name: Upload
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist\projector_gui.exe
+          asset_name: projector_gui.exe
+          asset_content_type: binary/octet-stream
+
