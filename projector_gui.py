@@ -45,11 +45,11 @@ class ProjectorInterface(QThread):
 
         while True:
 
-            if proj is None:
-                proj = Projector.from_address(self.addr)
-                proj.authenticate('admin')
-
             try:
+                if proj is None:
+                    proj = Projector.from_address(self.addr)
+                    proj.authenticate('admin')
+
                 if self.queue.empty() is False:
                     st = self.queue.get_nowait()
 
