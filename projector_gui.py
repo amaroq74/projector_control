@@ -12,6 +12,8 @@ import threading
 import datetime
 import time
 
+import queue
+
 ProjAddrs = {'StageLeft' : 'ch-proj1.pius.org',
              'StageRight': 'ch-proj3.pius.org',
              'Center'    : 'ch-proj2.pius.org'}
@@ -19,7 +21,6 @@ ProjAddrs = {'StageLeft' : 'ch-proj1.pius.org',
 class ProjectorInterface(QThread):
 
     powerUpdated = pyqtSignal(str)
-    shutterUpdated = pyqtSignal(str)
     timeUpdated = pyqtSignal(str)
 
     def __init__(self, name, addr, parent=None):
@@ -27,47 +28,43 @@ class ProjectorInterface(QThread):
 
         self.name = name
         self._addr = addr
-        self.proj = Projector.from_address(addr)
-        self.proj.authenticate('admin')
+        self.queue = queue.SimpleQueue()
 
     @pyqtSlot()
     def powerOn(self):
-        try:
-            self.proj.set_power('on')
-        except Exception as e:
-            print("Got power on error {e}")
+        self.queue.put(True)
 
     @pyqtSlot()
     def powerOff(self):
-        try:
-            self.proj.set_power('off')
-        except Exception as e:
-            print("Got power off error {e}")
-
-    @pyqtSlot()
-    def shutterOn(self):
-        try:
-            self.proj.set_mute(MUTE_VIDEO,True)
-        except Exception as e:
-            print("Got shutter on error {e}")
-
-    @pyqtSlot()
-    def shutterOff(self):
-        try:
-            self.proj.set_mute(MUTE_VIDEO,False)
-        except Exception as e:
-            print("Got shutter off error {e}")
+        self.queue.put(False)
 
     def run(self):
+        proj = None
+
         last = time.time()
 
         while True:
+
+            if proj is None:
+                proj = Projector.from_address(addr)
+                proj.authenticate('admin')
+
             try:
-                self.powerUpdated.emit(self.proj.get_power())
-                #self.shutterUpdated.emit(str(self.proj.get_mute()))
+                if self.queue.empty() is False:
+                    st = self.queue.get_nowait()
+
+                    if st:
+                        proj.set_power('on')
+                    else:
+                        proj.set_power('off')
+
+                    continue
+
+                self.powerUpdated.emit(proj.get_power())
                 self.timeUpdated.emit(str(datetime.datetime.now()))
             except Exception as e:
-                print("Got poll error {e}")
+                print(f"Got message error {e}")
+                proj = None
 
             dur = time.time() - last
 
@@ -106,11 +103,6 @@ class ProjectorControl(QWidget):
             self.projs[i].powerUpdated.connect(power.setText)
             fl.addRow(k + ' Power:',power)
 
-            #shutter = QLineEdit()
-            #shutter.setReadOnly(True)
-            #self.projs[i].shutterUpdated.connect(shutter.setText)
-            #fl.addRow(k + ' Shutter:',shutter)
-
             dtime = QLineEdit()
             dtime.setReadOnly(True)
             self.projs[i].timeUpdated.connect(dtime.setText)
@@ -127,18 +119,6 @@ class ProjectorControl(QWidget):
         powerOffBtn.pressed.connect(self.projs[1].powerOff)
         powerOffBtn.pressed.connect(self.projs[2].powerOff)
         fl.addRow("",powerOffBtn)
-
-        #shutterOnBtn = QPushButton("Shutter All On")
-        #shutterOnBtn.pressed.connect(self.projs[0].shutterOn)
-        #shutterOnBtn.pressed.connect(self.projs[1].shutterOn)
-        #shutterOnBtn.pressed.connect(self.projs[2].shutterOn)
-        #fl.addRow("",shutterOnBtn)
-
-        #shutterOffBtn = QPushButton("Shutter All Off")
-        #shutterOffBtn.pressed.connect(self.projs[0].shutterOff)
-        #shutterOffBtn.pressed.connect(self.projs[1].shutterOff)
-        #shutterOffBtn.pressed.connect(self.projs[2].shutterOff)
-        #fl.addRow("",shutterOffBtn)
 
         for p in self.projs:
             p.start()
