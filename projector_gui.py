@@ -27,7 +27,7 @@ class ProjectorInterface(QThread):
         super(ProjectorInterface, self).__init__(parent)
 
         self.name = name
-        self._addr = addr
+        self.addr = addr
         self.queue = queue.SimpleQueue()
 
     @pyqtSlot()
@@ -46,7 +46,7 @@ class ProjectorInterface(QThread):
         while True:
 
             if proj is None:
-                proj = Projector.from_address(addr)
+                proj = Projector.from_address(self.addr)
                 proj.authenticate('admin')
 
             try:
