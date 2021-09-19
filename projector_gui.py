@@ -14,9 +14,9 @@ import time
 
 import queue
 
-ProjAddrs = {'StageLeft' : 'ch-proj1.pius.org',
-             'StageRight': 'ch-proj3.pius.org',
-             'Center'    : 'ch-proj2.pius.org'}
+ProjAddrs = {'StageRight' : 'ch-proj1.pius.org',
+             'Center'     : 'ch-proj2.pius.org',
+             'StageLeft'  : 'ch-proj3.pius.org'}
 
 class ProjectorInterface(QThread):
 
